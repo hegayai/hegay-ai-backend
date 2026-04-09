@@ -6,7 +6,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Load API keys
+# Load API key from Render environment
 STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
 
 # ---------------------------
@@ -14,7 +14,7 @@ STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
 # ---------------------------
 @app.route("/")
 def home():
-    return jsonify({"message": "Hegay AI backend is running on Render."})
+    return jsonify({"message": "Hegay AI backend is running successfully on Render."})
 
 # ---------------------------
 # TEXT GENERATION ENDPOINT
@@ -27,7 +27,7 @@ def generate_text():
     if not prompt:
         return jsonify({"error": "Prompt is required"}), 400
 
-    # Simple placeholder response (you can connect your model later)
+    # Placeholder response (you can connect your model later)
     return jsonify({
         "response": f"You said: {prompt}. Text generation model will be added soon."
     })
@@ -67,6 +67,50 @@ def generate_image():
     image_base64 = result.get("image")
 
     return jsonify({"image": image_base64})
+
+# ---------------------------
+# IMAGE TEST PAGE (HTML UI)
+# ---------------------------
+@app.route("/image-test")
+def image_test():
+    return """
+    <html>
+    <head>
+        <title>Hegay AI Image Test</title>
+    </head>
+    <body style="font-family: Arial; padding: 40px;">
+        <h2>Hegay AI – Image Generator Test</h2>
+        <form onsubmit="generateImage(); return false;">
+            <input id="prompt" type="text" placeholder="Enter prompt" style="width: 300px; padding: 8px;">
+            <button type="submit" style="padding: 8px;">Generate</button>
+        </form>
+        <p id="status"></p>
+        <img id="result" style="margin-top: 20px; max-width: 400px;">
+        
+        <script>
+            async function generateImage() {
+                document.getElementById("status").innerText = "Generating...";
+                const prompt = document.getElementById("prompt").value;
+
+                const response = await fetch('/generate-image', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt})
+                });
+
+                const data = await response.json();
+
+                if (data.image) {
+                    document.getElementById("result").src = "data:image/png;base64," + data.image;
+                    document.getElementById("status").innerText = "Done.";
+                } else {
+                    document.getElementById("status").innerText = "Error: " + JSON.stringify(data);
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
 
 # ---------------------------
 # RUN APP
