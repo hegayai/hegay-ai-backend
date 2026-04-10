@@ -6,7 +6,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Load API key from Render environment
 STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
 
 # ---------------------------
@@ -27,13 +26,12 @@ def generate_text():
     if not prompt:
         return jsonify({"error": "Prompt is required"}), 400
 
-    # Placeholder response (you can connect your model later)
     return jsonify({
         "response": f"You said: {prompt}. Text generation model will be added soon."
     })
 
 # ---------------------------
-# IMAGE GENERATION ENDPOINT (Stability.ai SD3)
+# IMAGE GENERATION (Stability SD3 - multipart/form-data)
 # ---------------------------
 @app.route("/generate-image", methods=["POST"])
 def generate_image():
@@ -50,12 +48,13 @@ def generate_image():
         "Accept": "application/json"
     }
 
-    payload = {
-        "prompt": prompt,
-        "output_format": "png"
+    # multipart/form-data payload
+    files = {
+        "prompt": (None, prompt),
+        "output_format": (None, "png")
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, files=files)
 
     if response.status_code != 200:
         return jsonify({
@@ -69,7 +68,7 @@ def generate_image():
     return jsonify({"image": image_base64})
 
 # ---------------------------
-# IMAGE TEST PAGE (HTML UI)
+# IMAGE TEST PAGE
 # ---------------------------
 @app.route("/image-test")
 def image_test():
