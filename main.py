@@ -11,61 +11,58 @@ CORS(app)
 # ---------------------------------------------------------
 DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY")
 
-# Example model IDs (you must set the real ones in Render):
-# e.g. "black-forest-labs/flux-1-dev"
-# e.g. "playgroundai/playground-v3.0"
-FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")          # primary realism model
-PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # cinematic / group model
+# Example model IDs (set these in Render)
+# Flux.1 (realism, faces, consistency)
+FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")  # black-forest-labs/flux-1-dev
+
+# Playground v3 (cinematic, group scenes)
+PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # playgroundai/playground-v3.0
 
 DEEPINFRA_BASE_URL = "https://api.deepinfra.com/v1/inference"
 
 # ---------------------------------------------------------
-# MASTER HEGAY AI STYLE PROMPT
+# MASTER HEGAY AI STYLE PROMPT (UPGRADED)
 # ---------------------------------------------------------
 HEGAY_AI_MASTER_PROMPT = """
 Hegay AI Master Style Guide:
 
 Create visuals in a unified Afro‑cinematic, diaspora‑focused, modern digital art style
-with a touch of high-end animated film quality (Pixar-level polish but original, non-copyrighted).
+with a touch of high-end animated film quality (Pixar-level polish but original).
 
-FACES, BODIES & CONSISTENT CHARACTERS:
-- Natural, beautiful faces with correct anatomy and proportions
-- Clear eyes, correct hands and fingers, no extra limbs or distortions
-- Consistent character look when the same description is reused
-  (same face, age, hairstyle, vibe, and general appearance across scenes)
+FACE & CHARACTER QUALITY:
+- Natural, beautiful faces with correct anatomy
+- Clear eyes, correct hands, no distortions
+- Accurate age representation (e.g., “32-year-old woman” must look 32)
+- Consistent characters across multiple images when the same description is used
 - Expressive but believable emotions
-- Respectful, dignified, uplifting portrayal of all people
 
-DIVERSE PEOPLE & CULTURES:
-- Support African, African diaspora, American, European, Asian, Indian, Middle Eastern,
-  Latin American and other global identities
-- Cultural attire, environments, and settings should match the description
-  (e.g. saree, kimono, agbada, suit, streetwear, etc.)
-- Always avoid stereotypes; focus on beauty, strength, and humanity
+GLOBAL DIVERSITY:
+- Support African, diaspora, American, European, Asian, Indian, Middle Eastern,
+  Latin American and global identities
+- Cultural attire and environments must match the description
+- Avoid stereotypes; focus on dignity, beauty, and humanity
 
-CORE VISUAL STYLE:
-- Afro‑cinematic lighting with soft glow and deep contrast
+CINEMATIC STYLE:
+- Deep contrast, soft glow, dramatic lighting
+- Rich melanin tones, detailed fabrics, realistic or stylized hair
 - Smooth gradients, clean edges, sharp details
-- Rich skin tones, detailed fabrics, realistic or stylized hair
 - Vibrant but balanced colors inspired by global cultures
-- Subtle bloom, depth, and atmospheric richness
-- Professional studio‑grade finish
+- Subtle bloom, depth, atmospheric richness
 
 FORMAT ADAPTATION:
-- Music Covers: bold composition, album‑ready layout, emotional storytelling
-- Drama Posters: cinematic framing, film‑grade lighting, title space preserved
-- Avatars: centered portrait, clean background, afro‑futuristic or modern polish
-- Logos: minimalist vector‑style shapes, flat design, no background
-- Social Cards: mobile-first layout, bold headline space, high contrast
-- YouTube Thumbnails: expressive subject, strong contrast, 16:9, text space
-- Future Video Frames: consistent style, smooth motion, cinematic tone
+- Music Covers: bold composition, album-ready layout
+- Drama Posters: cinematic framing, film-grade lighting
+- Avatars: centered portrait, clean background
+- Logos: minimalist vector shapes, no background
+- Social Cards: mobile-first layout, bold headline space
+- YouTube Thumbnails: expressive subject, strong contrast, 16:9
+- Future Video Frames: consistent style, smooth motion
 
 QUALITY TARGET:
-- Match or exceed the visual clarity, sharpness, and cleanliness
-  of leading AI image models
-- Ultra‑sharp details, high dynamic range, clean color grading
-- No artifacts, no glitches, no text unless requested
-- No copyrighted characters, logos, or branded elements
+- Match or exceed top AI models in clarity and realism
+- Ultra-sharp details, high dynamic range, clean color grading
+- No artifacts, no glitches, no unwanted text
+- No copyrighted characters or branded elements
 
 OUTPUT REQUIREMENT:
 Always produce a polished, emotionally powerful, globally inclusive visual
@@ -73,27 +70,14 @@ in the unified Hegay AI signature style.
 """
 
 # ---------------------------------------------------------
-# MODEL SWITCHER HELPER
+# MODEL SWITCHER
 # ---------------------------------------------------------
 def get_model_id(model_name: str) -> str:
-    """
-    Returns the correct model ID based on the requested model.
-    Defaults to FLUX_MODEL_ID if unknown.
-    """
     if model_name == "playground":
         return PLAYGROUND_MODEL_ID
-    # default to flux
-    return FLUX_MODEL_ID
+    return FLUX_MODEL_ID  # default
 
 def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
-    """
-    Calls DeepInfra (or similar provider) with the selected model.
-    You must set:
-      - DEEPINFRA_API_KEY
-      - FLUX_MODEL_ID
-      - PLAYGROUND_MODEL_ID
-    in your environment.
-    """
     if not DEEPINFRA_API_KEY:
         return None, "DEEPINFRA_API_KEY is not set"
 
@@ -110,11 +94,6 @@ def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
 
     payload = {
         "prompt": full_prompt
-        # You can add more provider-specific params here if needed:
-        # "num_inference_steps": 28,
-        # "guidance_scale": 4.5,
-        # "width": 1024,
-        # "height": 1024,
     }
 
     response = requests.post(url, headers=headers, json=payload)
@@ -127,13 +106,10 @@ def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
     except Exception as e:
         return None, f"Failed to parse JSON: {str(e)}"
 
-    # Try common patterns: some providers return "images" with base64,
-    # others may return "image" directly. We support both.
     image_base64 = None
 
     if isinstance(result, dict):
         if "images" in result and isinstance(result["images"], list) and result["images"]:
-            # e.g. {"images": [{"image_base64": "..."}]}
             first = result["images"][0]
             image_base64 = first.get("image_base64") or first.get("image")
         elif "image" in result:
@@ -173,7 +149,7 @@ def generate_text():
 def generate_image():
     data = request.get_json()
     prompt = data.get("prompt")
-    model = data.get("model", "flux")  # "flux" or "playground"
+    model = data.get("model", "flux")
 
     if not prompt:
         return jsonify({"error": "Prompt is required"}), 400
@@ -290,7 +266,7 @@ def generate_youtube_thumbnail():
     return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
-# IMAGE TEST PAGE (uses /generate-image with default model)
+# IMAGE TEST PAGE
 # ---------------------------------------------------------
 @app.route("/image-test")
 def image_test():
