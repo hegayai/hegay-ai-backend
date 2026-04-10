@@ -14,41 +14,50 @@ STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
 HEGAY_AI_MASTER_PROMPT = """
 Hegay AI Master Style Guide:
 
-Create visuals in a unified Afro‑cinematic, diaspora‑focused, modern digital art style.
-All outputs must be clean, professional, emotionally powerful, and culturally respectful.
+Create visuals in a unified Afro‑cinematic, diaspora‑focused, modern digital art style
+with a touch of high-end animated film quality (Pixar-level polish but original, non-copyrighted).
+
+FACES, BODIES & CONSISTENT CHARACTERS:
+- Natural, beautiful faces with correct anatomy and proportions
+- Clear eyes, correct hands and fingers, no extra limbs or distortions
+- Consistent character look when the same description is reused
+  (same face, age, hairstyle, vibe, and general appearance across scenes)
+- Expressive but believable emotions
+- Respectful, dignified, uplifting portrayal of all people
+
+DIVERSE PEOPLE & CULTURES:
+- Support African, African diaspora, American, European, Asian, Indian, Middle Eastern,
+  Latin American and other global identities
+- Cultural attire, environments, and settings should match the description
+  (e.g. saree, kimono, agbada, suit, streetwear, etc.)
+- Always avoid stereotypes; focus on beauty, strength, and humanity
 
 CORE VISUAL STYLE:
 - Afro‑cinematic lighting with soft glow and deep contrast
 - Smooth gradients, clean edges, sharp details
-- Melanin‑rich skin tones, expressive eyes, natural textures
-- Vibrant but balanced colors inspired by African culture
+- Rich skin tones, detailed fabrics, realistic or stylized hair
+- Vibrant but balanced colors inspired by global cultures
 - Subtle bloom, depth, and atmospheric richness
 - Professional studio‑grade finish
 
-CULTURAL IDENTITY:
-- Nigerian + African diaspora representation
-- Ankara, Aso‑oke, tribal patterns, Afro‑fusion fashion
-- Yoruba, Igbo, Hausa, Pidgin, and diaspora influences
-- Empowering, respectful, uplifting portrayal of African people
-
 FORMAT ADAPTATION:
-- Music Covers: bold composition, emotional storytelling, album‑ready layout
+- Music Covers: bold composition, album‑ready layout, emotional storytelling
 - Drama Posters: cinematic framing, film‑grade lighting, title space preserved
-- Avatars: centered portrait, clean background, afro‑futuristic polish
+- Avatars: centered portrait, clean background, afro‑futuristic or modern polish
 - Logos: minimalist vector‑style shapes, flat design, no background
-- Social Cards: mobile‑first layout, bold headline space, high contrast
+- Social Cards: mobile-first layout, bold headline space, high contrast
 - YouTube Thumbnails: expressive subject, strong contrast, 16:9, text space
 - Future Video Frames: consistent style, smooth motion, cinematic tone
 
-TECHNICAL QUALITY:
-- Ultra‑sharp details
-- High dynamic range
-- Clean color grading
-- No artifacts or distortions
+QUALITY TARGET:
+- Match or exceed the visual clarity, sharpness, and cleanliness
+  of leading AI image models
+- Ultra‑sharp details, high dynamic range, clean color grading
+- No artifacts, no glitches, no text unless requested
 - No copyrighted characters, logos, or branded elements
 
 OUTPUT REQUIREMENT:
-Always produce a polished, emotionally powerful, diaspora‑focused visual
+Always produce a polished, emotionally powerful, globally inclusive visual
 in the unified Hegay AI signature style.
 """
 
@@ -82,6 +91,21 @@ def generate_stability_image(full_prompt: str):
 @app.route("/")
 def home():
     return jsonify({"message": "Hegay AI backend is running successfully on Render."})
+
+# ---------------------------------------------------------
+# TEXT GENERATION (placeholder)
+# ---------------------------------------------------------
+@app.route("/generate-text", methods=["POST"])
+def generate_text():
+    data = request.get_json()
+    prompt = data.get("prompt")
+
+    if not prompt:
+        return jsonify({"error": "Prompt is required"}), 400
+
+    return jsonify({
+        "response": f"You said: {prompt}. Text generation model will be added soon."
+    })
 
 # ---------------------------------------------------------
 # GENERIC IMAGE ENDPOINT
