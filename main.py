@@ -6,7 +6,18 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
+# ---------------------------------------------------------
+# ENVIRONMENT VARIABLES (SET THESE IN RENDER)
+# ---------------------------------------------------------
+DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY")
+
+# Example model IDs (you must set the real ones in Render):
+# e.g. "black-forest-labs/flux-1-dev"
+# e.g. "playgroundai/playground-v3.0"
+FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")          # primary realism model
+PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # cinematic / group model
+
+DEEPINFRA_BASE_URL = "https://api.deepinfra.com/v1/inference"
 
 # ---------------------------------------------------------
 # MASTER HEGAY AI STYLE PROMPT
@@ -62,35 +73,83 @@ in the unified Hegay AI signature style.
 """
 
 # ---------------------------------------------------------
-# HELPER FUNCTION — Stability SD3
+# MODEL SWITCHER HELPER
 # ---------------------------------------------------------
-def generate_stability_image(full_prompt: str):
-    url = "https://api.stability.ai/v2beta/stable-image/generate/sd3"
+def get_model_id(model_name: str) -> str:
+    """
+    Returns the correct model ID based on the requested model.
+    Defaults to FLUX_MODEL_ID if unknown.
+    """
+    if model_name == "playground":
+        return PLAYGROUND_MODEL_ID
+    # default to flux
+    return FLUX_MODEL_ID
+
+def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
+    """
+    Calls DeepInfra (or similar provider) with the selected model.
+    You must set:
+      - DEEPINFRA_API_KEY
+      - FLUX_MODEL_ID
+      - PLAYGROUND_MODEL_ID
+    in your environment.
+    """
+    if not DEEPINFRA_API_KEY:
+        return None, "DEEPINFRA_API_KEY is not set"
+
+    model_id = get_model_id(model_name)
+    if not model_id:
+        return None, f"Model ID for '{model_name}' is not configured"
+
+    url = f"{DEEPINFRA_BASE_URL}/{model_id}"
 
     headers = {
-        "Authorization": f"Bearer {STABILITY_API_KEY}",
-        "Accept": "application/json"
+        "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    files = {
-        "prompt": (None, full_prompt),
-        "output_format": (None, "png")
+    payload = {
+        "prompt": full_prompt
+        # You can add more provider-specific params here if needed:
+        # "num_inference_steps": 28,
+        # "guidance_scale": 4.5,
+        # "width": 1024,
+        # "height": 1024,
     }
 
-    response = requests.post(url, headers=headers, files=files)
+    response = requests.post(url, headers=headers, json=payload)
 
     if response.status_code != 200:
         return None, response.text
 
-    result = response.json()
-    return result.get("image"), None
+    try:
+        result = response.json()
+    except Exception as e:
+        return None, f"Failed to parse JSON: {str(e)}"
+
+    # Try common patterns: some providers return "images" with base64,
+    # others may return "image" directly. We support both.
+    image_base64 = None
+
+    if isinstance(result, dict):
+        if "images" in result and isinstance(result["images"], list) and result["images"]:
+            # e.g. {"images": [{"image_base64": "..."}]}
+            first = result["images"][0]
+            image_base64 = first.get("image_base64") or first.get("image")
+        elif "image" in result:
+            image_base64 = result.get("image")
+
+    if not image_base64:
+        return None, f"Could not find image data in response: {result}"
+
+    return image_base64, None
 
 # ---------------------------------------------------------
 # ROOT
 # ---------------------------------------------------------
 @app.route("/")
 def home():
-    return jsonify({"message": "Hegay AI backend is running successfully on Render."})
+    return jsonify({"message": "Hegay AI backend (Flux + Playground switcher) is running successfully."})
 
 # ---------------------------------------------------------
 # TEXT GENERATION (placeholder)
@@ -114,18 +173,19 @@ def generate_text():
 def generate_image():
     data = request.get_json()
     prompt = data.get("prompt")
+    model = data.get("model", "flux")  # "flux" or "playground"
 
     if not prompt:
         return jsonify({"error": "Prompt is required"}), 400
 
     full_prompt = f"{prompt}. {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
 
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
 
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
 # MUSIC COVER
@@ -134,14 +194,15 @@ def generate_image():
 def generate_music_cover():
     data = request.get_json()
     prompt = data.get("prompt", "")
+    model = data.get("model", "flux")
 
     style = "Album cover style, bold composition, emotional storytelling."
     full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
 # DRAMA POSTER
@@ -150,14 +211,15 @@ def generate_music_cover():
 def generate_drama_poster():
     data = request.get_json()
     prompt = data.get("prompt", "")
+    model = data.get("model", "flux")
 
     style = "Drama poster style, cinematic framing, title space preserved."
     full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
 # AVATAR
@@ -166,14 +228,15 @@ def generate_drama_poster():
 def generate_avatar():
     data = request.get_json()
     prompt = data.get("prompt", "")
+    model = data.get("model", "flux")
 
     style = "Portrait avatar style, centered, clean background."
     full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
 # LOGO
@@ -182,14 +245,15 @@ def generate_avatar():
 def generate_logo():
     data = request.get_json()
     prompt = data.get("prompt", "")
+    model = data.get("model", "flux")
 
     style = "Minimalist vector logo, flat design, no background."
     full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
 # SOCIAL CARD
@@ -198,14 +262,15 @@ def generate_logo():
 def generate_social_card():
     data = request.get_json()
     prompt = data.get("prompt", "")
+    model = data.get("model", "flux")
 
     style = "Social media promo card, mobile-first layout, bold headline space."
     full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
 # YOUTUBE THUMBNAIL
@@ -214,17 +279,18 @@ def generate_social_card():
 def generate_youtube_thumbnail():
     data = request.get_json()
     prompt = data.get("prompt", "")
+    model = data.get("model", "flux")
 
     style = "YouTube thumbnail style, expressive subject, strong contrast, 16:9."
     full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
 
-    image_base64, error = generate_stability_image(full_prompt)
+    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
     if error or not image_base64:
         return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64})
+    return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
-# IMAGE TEST PAGE
+# IMAGE TEST PAGE (uses /generate-image with default model)
 # ---------------------------------------------------------
 @app.route("/image-test")
 def image_test():
@@ -234,7 +300,8 @@ def image_test():
         <title>Hegay AI Image Test</title>
     </head>
     <body style="font-family: Arial; padding: 40px;">
-        <h2>Hegay AI – Image Generator Test</h2>
+        <h2>Hegay AI – Image Generator Test (Flux / Playground)</h2>
+        <p>Default model: <b>flux</b>. You can change it in code or build a UI toggle later.</p>
         <form onsubmit="generateImage(); return false;">
             <input id="prompt" type="text" placeholder="Enter prompt" style="width: 300px; padding: 8px;">
             <button type="submit" style="padding: 8px;">Generate</button>
@@ -257,7 +324,7 @@ def image_test():
 
                 if (data.image) {
                     document.getElementById("result").src = "data:image/png;base64," + data.image;
-                    document.getElementById("status").innerText = "Done.";
+                    document.getElementById("status").innerText = "Done. Model used: " + data.model_used;
                 } else {
                     document.getElementById("status").innerText = "Error: " + JSON.stringify(data);
                 }
