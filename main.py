@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 # ---------------------------------------------------------
@@ -10,14 +10,11 @@ app = Flask(__name__)
 CORS(app)
 
 # ---------------------------------------------------------
-# ENVIRONMENT VARIABLES (SET THESE IN RENDER)
+# ENVIRONMENT VARIABLES
 # ---------------------------------------------------------
 DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY")
-
-# Model IDs (set these in Render)
-FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")          # e.g., black-forest-labs/flux-1-dev
-PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # e.g., playgroundai/playground-v3.0
-
+FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")
+PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")
 DEEPINFRA_BASE_URL = "https://api.deepinfra.com/v1/inference"
 
 # ---------------------------------------------------------
@@ -46,14 +43,7 @@ def index():
     })
 
 # ---------------------------------------------------------
-# GUNICORN ENTRY POINT
-# ---------------------------------------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-
-
-# ---------------------------------------------------------
-# MASTER HEGAY AI STYLE PROMPT (UPGRADED)
+# MASTER HEGAY AI STYLE PROMPT
 # ---------------------------------------------------------
 HEGAY_AI_MASTER_PROMPT = """
 Hegay AI Master Style Guide:
@@ -64,8 +54,8 @@ with a touch of high-end animated film quality (Pixar-level polish but original)
 FACE & CHARACTER QUALITY:
 - Natural, beautiful faces with correct anatomy
 - Clear eyes, correct hands, no distortions
-- Accurate age representation (e.g., “32-year-old woman” must look 32)
-- Consistent characters across multiple images when the same description is used
+- Accurate age representation
+- Consistent characters across multiple images
 - Expressive but believable emotions
 
 GLOBAL DIVERSITY:
@@ -78,23 +68,21 @@ CINEMATIC STYLE:
 - Deep contrast, soft glow, dramatic lighting
 - Rich melanin tones, detailed fabrics, realistic or stylized hair
 - Smooth gradients, clean edges, sharp details
-- Vibrant but balanced colors inspired by global cultures
+- Vibrant but balanced colors
 - Subtle bloom, depth, atmospheric richness
 
 FORMAT ADAPTATION:
 - Music Covers: bold composition, album-ready layout
-- Drama Posters: cinematic framing, film-grade lighting
-- Avatars: centered portrait, clean background
-- Logos: minimalist vector shapes, no background
-- Social Cards: mobile-first layout, bold headline space
-- YouTube Thumbnails: expressive subject, strong contrast, 16:9
-- Future Video Frames: consistent style, smooth motion
+- Drama Posters: cinematic framing
+- Avatars: centered portrait
+- Logos: minimalist vector shapes
+- Social Cards: mobile-first layout
+- YouTube Thumbnails: expressive subject, strong contrast
+- Future Video Frames: consistent style
 
 QUALITY TARGET:
-- Match or exceed top AI models in clarity and realism
-- Ultra-sharp details, high dynamic range, clean color grading
+- Ultra-sharp details, HDR, clean color grading
 - No artifacts, no glitches, no unwanted text
-- No copyrighted characters or branded elements
 
 OUTPUT REQUIREMENT:
 Always produce a polished, emotionally powerful, globally inclusive visual
@@ -107,7 +95,7 @@ in the unified Hegay AI signature style.
 def get_model_id(model_name: str) -> str:
     if model_name == "playground":
         return PLAYGROUND_MODEL_ID
-    return FLUX_MODEL_ID  # default
+    return FLUX_MODEL_ID
 
 def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
     if not DEEPINFRA_API_KEY:
@@ -124,10 +112,7 @@ def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
         "Content-Type": "application/json"
     }
 
-    payload = {
-        "prompt": full_prompt
-    }
-
+    payload = {"prompt": full_prompt}
     response = requests.post(url, headers=headers, json=payload)
 
     if response.status_code != 200:
@@ -135,8 +120,8 @@ def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
 
     try:
         result = response.json()
-    except Exception as e:
-        return None, f"Failed to parse JSON: {str(e)}"
+    except:
+        return None, "Failed to parse JSON"
 
     image_base64 = None
 
@@ -151,13 +136,6 @@ def generate_image_with_model(full_prompt: str, model_name: str = "flux"):
         return None, f"Could not find image data in response: {result}"
 
     return image_base64, None
-
-# ---------------------------------------------------------
-# ROOT
-# ---------------------------------------------------------
-@app.route("/")
-def home():
-    return jsonify({"message": "Hegay AI backend (Flux + Playground switcher) is running successfully."})
 
 # ---------------------------------------------------------
 # TEXT GENERATION (placeholder)
@@ -187,7 +165,6 @@ def generate_image():
         return jsonify({"error": "Prompt is required"}), 400
 
     full_prompt = f"{prompt}. {HEGAY_AI_MASTER_PROMPT}"
-
     image_base64, error = generate_image_with_model(full_prompt, model_name=model)
 
     if error or not image_base64:
@@ -196,106 +173,40 @@ def generate_image():
     return jsonify({"image": image_base64, "model_used": model})
 
 # ---------------------------------------------------------
-# MUSIC COVER
+# SPECIALIZED IMAGE ENDPOINTS
 # ---------------------------------------------------------
-@app.route("/generate-music-cover", methods=["POST"])
-def generate_music_cover():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    model = data.get("model", "flux")
+def build_image_route(style_text):
+    def route():
+        data = request.get_json()
+        prompt = data.get("prompt", "")
+        model = data.get("model", "flux")
 
-    style = "Album cover style, bold composition, emotional storytelling."
-    full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
+        full_prompt = f"{prompt}. {style_text} {HEGAY_AI_MASTER_PROMPT}"
+        image_base64, error = generate_image_with_model(full_prompt, model_name=model)
 
-    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
-    if error or not image_base64:
-        return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64, "model_used": model})
+        if error or not image_base64:
+            return jsonify({"error": "Image generation failed", "details": error}), 500
 
-# ---------------------------------------------------------
-# DRAMA POSTER
-# ---------------------------------------------------------
-@app.route("/generate-drama-poster", methods=["POST"])
-def generate_drama_poster():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    model = data.get("model", "flux")
+        return jsonify({"image": image_base64, "model_used": model})
+    return route
 
-    style = "Drama poster style, cinematic framing, title space preserved."
-    full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
+app.add_url_rule("/generate-music-cover", "music_cover",
+                 build_image_route("Album cover style, bold composition."), methods=["POST"])
 
-    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
-    if error or not image_base64:
-        return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64, "model_used": model})
+app.add_url_rule("/generate-drama-poster", "drama_poster",
+                 build_image_route("Drama poster style, cinematic framing."), methods=["POST"])
 
-# ---------------------------------------------------------
-# AVATAR
-# ---------------------------------------------------------
-@app.route("/generate-avatar", methods=["POST"])
-def generate_avatar():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    model = data.get("model", "flux")
+app.add_url_rule("/generate-avatar", "avatar",
+                 build_image_route("Portrait avatar style, centered."), methods=["POST"])
 
-    style = "Portrait avatar style, centered, clean background."
-    full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
+app.add_url_rule("/generate-logo", "logo",
+                 build_image_route("Minimalist vector logo, flat design."), methods=["POST"])
 
-    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
-    if error or not image_base64:
-        return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64, "model_used": model})
+app.add_url_rule("/generate-social-card", "social_card",
+                 build_image_route("Social media promo card, mobile-first layout."), methods=["POST"])
 
-# ---------------------------------------------------------
-# LOGO
-# ---------------------------------------------------------
-@app.route("/generate-logo", methods=["POST"])
-def generate_logo():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    model = data.get("model", "flux")
-
-    style = "Minimalist vector logo, flat design, no background."
-    full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
-
-    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
-    if error or not image_base64:
-        return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64, "model_used": model})
-
-# ---------------------------------------------------------
-# SOCIAL CARD
-# ---------------------------------------------------------
-@app.route("/generate-social-card", methods=["POST"])
-def generate_social_card():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    model = data.get("model", "flux")
-
-    style = "Social media promo card, mobile-first layout, bold headline space."
-    full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
-
-    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
-    if error or not image_base64:
-        return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64, "model_used": model})
-
-# ---------------------------------------------------------
-# YOUTUBE THUMBNAIL
-# ---------------------------------------------------------
-@app.route("/generate-youtube-thumbnail", methods=["POST"])
-def generate_youtube_thumbnail():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    model = data.get("model", "flux")
-
-    style = "YouTube thumbnail style, expressive subject, strong contrast, 16:9."
-    full_prompt = f"{prompt}. {style} {HEGAY_AI_MASTER_PROMPT}"
-
-    image_base64, error = generate_image_with_model(full_prompt, model_name=model)
-    if error or not image_base64:
-        return jsonify({"error": "Image generation failed", "details": error}), 500
-    return jsonify({"image": image_base64, "model_used": model})
+app.add_url_rule("/generate-youtube-thumbnail", "youtube_thumbnail",
+                 build_image_route("YouTube thumbnail style, expressive subject."), methods=["POST"])
 
 # ---------------------------------------------------------
 # IMAGE TEST PAGE
@@ -304,12 +215,9 @@ def generate_youtube_thumbnail():
 def image_test():
     return """
     <html>
-    <head>
-        <title>Hegay AI Image Test</title>
-    </head>
+    <head><title>Hegay AI Image Test</title></head>
     <body style="font-family: Arial; padding: 40px;">
-        <h2>Hegay AI – Image Generator Test (Flux / Playground)</h2>
-        <p>Default model: <b>flux</b>. You can change it in code or build a UI toggle later.</p>
+        <h2>Hegay AI – Image Generator Test</h2>
         <form onsubmit="generateImage(); return false;">
             <input id="prompt" type="text" placeholder="Enter prompt" style="width: 300px; padding: 8px;">
             <button type="submit" style="padding: 8px;">Generate</button>
