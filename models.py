@@ -1,38 +1,44 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Table
-from sqlalchemy.orm import relationship
-from db import Base
+from flask import jsonify
+from db import Base, engine, SessionLocal
+from models import User, Role, UserRole
 import bcrypt
 
-# Association table for many-to-many relationship
-class UserRole(Base):
-    __tablename__ = "user_roles"
+# Create all tables
+Base.metadata.create_all(bind=engine)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    role_id = Column(Integer, ForeignKey("roles.id"))
+def create_admin():
+    db = SessionLocal()
+
+    # 1. Ensure admin role exists
+    admin_role = db.query(Role).filter(Role.name == "admin").first()
+    if not admin_role:
+        admin_role = Role(name="admin")
+        db.add(admin_role)
+        db.commit()
+        db.refresh(admin_role)
+
+    # 2. Ensure admin user exists
+    admin_user = db.query(User).filter(User.email == "admin@hegay.ai").first()
+    if not admin_user:
+        admin_user = User(
+            email="admin@hegay.ai",
+            password_hash=bcrypt.hashpw("Admin@162000@".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        )
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+
+        # 3. Link admin user to admin role
+        link = UserRole(user_id=admin_user.id, role_id=admin_role.id)
+        db.add(link)
+        db.commit()
+
+    db.close()
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-
-    roles = relationship("Role", secondary="user_roles", back_populates="users")
-
-    def set_password(self, password: str):
-        self.password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-    def check_password(self, password: str) -> bool:
-        return bcrypt.checkpw(password.encode("utf-8"), self.password_hash.encode("utf-8"))
-
-
-class Role(Base):
-    __tablename__ = "roles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)
-
-    users = relationship("User", secondary="user_roles", back_populates="roles")
+# Register route without circular import
+def register_bootstrap_route(app):
+    @app.route("/bootstrap-admin", methods=["GET"])
+    def bootstrap_admin_route():
+        create_admin()
+        return jsonify({"status": "success", "message": "Admin bootstrap complete"})
