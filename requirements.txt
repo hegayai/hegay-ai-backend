@@ -5,5 +5,7 @@ flask-cors
 sqlalchemy
 psycopg2-binary
 bcrypt
+PyJWT
+
 
 
