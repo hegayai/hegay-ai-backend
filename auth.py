@@ -6,7 +6,9 @@ from functools import wraps
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Increase token lifetime to avoid Render clock drift issues
+ACCESS_TOKEN_EXPIRE_HOURS = 2
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 
@@ -14,7 +16,7 @@ def create_access_token(user_id, roles):
     payload = {
         "sub": user_id,
         "roles": roles,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
