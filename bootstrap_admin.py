@@ -1,9 +1,9 @@
-from flask import jsonify, current_app
+from flask import jsonify
 from db import Base, engine, SessionLocal
 from models import User, Role, UserRole
 import bcrypt
 
-# Create all tables safely at startup
+# Create all tables
 Base.metadata.create_all(bind=engine)
 
 def create_admin():
@@ -20,10 +20,9 @@ def create_admin():
     # 2. Ensure admin user exists
     admin_user = db.query(User).filter(User.email == "admin@hegay.ai").first()
     if not admin_user:
-        hashed_pw = bcrypt.hashpw("Admin@162000@".encode("utf-8"), bcrypt.gensalt())
         admin_user = User(
             email="admin@hegay.ai",
-            password=hashed_pw.decode("utf-8")
+            password_hash=bcrypt.hashpw("Admin@162000@".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         )
         db.add(admin_user)
         db.commit()
@@ -36,10 +35,6 @@ def create_admin():
 
     db.close()
 
-
-# ⭐ IMPORTANT FIX:
-# No more "from main import app" — that caused the circular import.
-# Instead, use current_app from Flask.
 
 def register_bootstrap_route(app):
     @app.route("/bootstrap-admin", methods=["GET"])
