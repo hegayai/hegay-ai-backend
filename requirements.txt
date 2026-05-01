@@ -3,4 +3,6 @@ requests
 gunicorn
 flask-cors
 sqlalchemy
+psycopg2-binary
+
 
