@@ -1,9 +1,11 @@
-import bootstrap_admin
 import os
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# ---------------------------------------------------------
+# INITIALIZE FLASK APP
+# ---------------------------------------------------------
 app = Flask(__name__)
 CORS(app)
 
@@ -12,14 +14,34 @@ CORS(app)
 # ---------------------------------------------------------
 DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY")
 
-# Example model IDs (set these in Render)
+# Model IDs (set these in Render)
 # Flux.1 (realism, faces, consistency)
-FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")  # black-forest-labs/flux-1-dev
+FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")  # e.g., black-forest-labs/flux-1-dev
 
 # Playground v3 (cinematic, group scenes)
-PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # playgroundai/playground-v3.0
+PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # e.g., playgroundai/playground-v3.0
 
+# DeepInfra base URL
 DEEPINFRA_BASE_URL = "https://api.deepinfra.com/v1/inference"
+
+# ---------------------------------------------------------
+# REGISTER ADMIN BOOTSTRAP ROUTE
+# ---------------------------------------------------------
+from bootstrap_admin import register_bootstrap_route
+register_bootstrap_route(app)
+
+# ---------------------------------------------------------
+# ROOT ENDPOINT
+# ---------------------------------------------------------
+@app.route("/")
+def home():
+    return jsonify({"status": "running", "message": "Hegay AI Core backend is live"})
+
+# ---------------------------------------------------------
+# GUNICORN ENTRY POINT
+# ---------------------------------------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
 
 # ---------------------------------------------------------
 # MASTER HEGAY AI STYLE PROMPT (UPGRADED)
