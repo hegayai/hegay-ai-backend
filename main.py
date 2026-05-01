@@ -15,13 +15,9 @@ CORS(app)
 DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY")
 
 # Model IDs (set these in Render)
-# Flux.1 (realism, faces, consistency)
-FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")  # e.g., black-forest-labs/flux-1-dev
-
-# Playground v3 (cinematic, group scenes)
+FLUX_MODEL_ID = os.getenv("FLUX_MODEL_ID")          # e.g., black-forest-labs/flux-1-dev
 PLAYGROUND_MODEL_ID = os.getenv("PLAYGROUND_MODEL_ID")  # e.g., playgroundai/playground-v3.0
 
-# DeepInfra base URL
 DEEPINFRA_BASE_URL = "https://api.deepinfra.com/v1/inference"
 
 # ---------------------------------------------------------
@@ -31,11 +27,14 @@ from bootstrap_admin import register_bootstrap_route
 register_bootstrap_route(app)
 
 # ---------------------------------------------------------
-# ROOT ENDPOINT
+# ROOT ENDPOINT (ONLY ONE)
 # ---------------------------------------------------------
 @app.route("/")
-def home():
-    return jsonify({"status": "running", "message": "Hegay AI Core backend is live"})
+def index():
+    return jsonify({
+        "status": "running",
+        "message": "Hegay AI Core backend is live"
+    })
 
 # ---------------------------------------------------------
 # GUNICORN ENTRY POINT
