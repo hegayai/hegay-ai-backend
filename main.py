@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 from flask_cors import CORS
 
 # ---------------------------------------------------------
@@ -27,6 +27,15 @@ from bootstrap_admin import register_bootstrap_route
 register_bootstrap_route(app)
 
 # ---------------------------------------------------------
+# REGISTER AUTH + PROTECTED ROUTES
+# ---------------------------------------------------------
+from routes_auth import auth_bp
+from routes_protected import protected_bp
+
+app.register_blueprint(auth_bp)
+app.register_blueprint(protected_bp)
+
+# ---------------------------------------------------------
 # ROOT ENDPOINT (ONLY ONE)
 # ---------------------------------------------------------
 @app.route("/")
@@ -41,6 +50,7 @@ def index():
 # ---------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
 
 # ---------------------------------------------------------
 # MASTER HEGAY AI STYLE PROMPT (UPGRADED)
